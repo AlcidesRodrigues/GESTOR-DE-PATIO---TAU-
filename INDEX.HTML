@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestor de Pátio</title>
+<style>
+  :root { --azul:#1e3a8a; --azul2:#2563eb; --verde:#16a34a; --laranja:#ea580c; --cinza:#6b7280; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',Arial,sans-serif; background:#f1f5f9; color:#0f172a; }
+  .topbar { background:var(--azul); color:#fff; padding:10px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+  .topbar .titulo { font-size:20px; font-weight:700; }
+  .topbar button { background:rgba(255,255,255,.15); color:#fff; border:none; padding:7px 12px; border-radius:6px; cursor:pointer; font-weight:600; margin-left:4px; }
+  .topbar button:hover { background:rgba(255,255,255,.3); }
+  .abas { display:flex; gap:8px; padding:12px 16px; background:#fff; border-bottom:2px solid #e2e8f0; }
+  .abas button { padding:10px 22px; border:none; border-radius:8px; cursor:pointer; font-size:15px; font-weight:700; background:#e2e8f0; color:#334155; }
+  .abas button.ativo { background:var(--azul); color:#fff; }
+  .container { padding:16px; max-width:1400px; margin:0 auto; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  .card { background:#fff; border-radius:10px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.1); }
+  .card h3 { margin-bottom:12px; font-size:16px; color:var(--azul); }
+  input, select { width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:14px; margin-bottom:8px; }
+  label { font-weight:600; font-size:13px; color:#475569; display:block; margin-bottom:4px; }
+  .btn { padding:10px 16px; border:none; border-radius:6px; cursor:pointer; font-weight:700; font-size:14px; }
+  .btn-azul { background:var(--azul2); color:#fff; } .btn-verde { background:var(--verde); color:#fff; }
+  .btn-laranja { background:var(--laranja); color:#fff; } .btn-cinza { background:var(--cinza); color:#fff; }
+  .btn:hover { opacity:.9; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { background:#f8fafc; text-align:left; padding:8px; border-bottom:2px solid #e2e8f0; text-transform:uppercase; font-size:11px; color:#475569; }
+  td { padding:8px; border-bottom:1px solid #e2e8f0; }
+  .badge { display:inline-block; padding:4px 8px; border-radius:20px; font-size:11px; font-weight:700; }
+  .no_patio { background:#dbeafe; color:#1e40af; }
+  .saida_solicitada { background:#fef3c7; color:#92400e; }
+  .finalizado { background:#dcfce7; color:#166534; }
+  .hidden { display:none; }
+  .atalhos { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .atalho-btn { background:#f1f5f9; border:1px solid #cbd5e1; padding:8px 12px; border-radius:6px; cursor:pointer; font-weight:700; }
+  .atalho-btn:hover { background:#e2e8f0; }
+  @media(max-width:900px){ .grid2,.grid3{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="titulo">🚗 Gestor de Pátio</div>
+  <div>
+    <button onclick="mostrar('colaboradores')">👥 Colaboradores</button>
+    <button onclick="mostrar('atalhos')">⚙️ Configurar Atalhos</button>
+    <button onclick="mostrar('logs')">🕓 Log de Acessos</button>
+    <button onclick="baixarRelatorio()">📥 Baixar Relatório</button>
+    <button onclick="telaCheia()">⛶ Tela Cheia</button>
+    <button onclick="sair()">✖ Sair do Sistema</button>
+  </div>
+</div>
+
+<div class="abas">
+  <button id="ab-caixa" class="ativo" onclick="mostrar('caixa');marcarAba(this)">💰 CAIXA</button>
+  <button id="ab-solicitacoes" onclick="mostrar('solicitacoes');marcarAba(this)">🔎 SOLICITAÇÕES</button>
+  <button id="ab-painel" onclick="mostrar('painel');marcarAba(this)">📊 PAINEL</button>
+</div>
+
+<!-- ============ ÁREA CAIXA ============ -->
+<div id="view-caixa">
+  <div class="grid2">
+    <div class="card">
+      <h3>📥 REGISTRAR ENTRADA</h3>
+      <label>Prisma</label>
+      <input type="text" id="ent-prisma" placeholder="Número do Prisma">
+      <label>Placa</label>
+      <input type="text" id="ent-placa" placeholder="Placa (ex: ABC1D23)">
+      <label>Modelo</label>
+      <input type="text" id="ent-modelo" placeholder="Modelo (opcional)">
+      <label>Pátio</label>
+      <select id="ent-patios">
+        <option value="">Selecione o pátio...</option>
+      </select>
+      <div class="atalhos" id="ent-atalhos"></div>
+      <button class="btn btn-verde" style="width:100%;margin-top:8px" onclick="registrarEntrada()">ENTRAR VEÍCULO</button>
+    </div>
+    <div class="card">
+      <h3>🔎 SOLICITAR SAÍDA (BUSCA NO PÁTIO)</h3>
+      <label>Buscar por</label>
+      <select id="saida-busca">
+        <option value="prisma">Prisma</option>
+        <option value="placa">Placa</option>
+      </select>
+      <label>Valor</label>
+      <input type="text" id="saida-valor" placeholder="Digite o prisma ou placa">
+      <label>Pátio</label>
+      <select id="saida-patios">
+        <option value="">Todos os pátios</option>
+      </select>
+      <button class="btn btn-laranja" style="width:100%;margin-top:8px" onclick="solicitarSaida()">SOLICITAR SAÍDA</button>
+      <div id="saida-resultado" style="margin-top:12px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ÁREA SOLICITAÇÕES ============ -->
+<div id="view-solicitacoes" class="hidden">
+  <div class="card">
+    <h3>🔎 SOLICITAÇÕES DE SAÍDA (Buscando no Pátio)</h3>
+    <table>
+      <thead><tr><th>Prisma</th><th>Placa</th><th>Modelo</th><th>Pátio</th><th>Hora Solicitada</th><th>Manobrista</th><th>Status</th><th>Ação</th></tr></thead>
+      <tbody id="tabela-solicitacoes"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============ ÁREA PAINEL ============ -->
+<div id="view-painel" class="hidden">
+  <div class="grid3">
+    <div class="card"><h3>VEÍCULOS NO PÁTIO</h3><div id="kpi-no-patio" style="font-size:34px;font-weight:700">0</div></div>
+    <div class="card"><h3>SAÍDAS SOLICITADAS</h3><div id="kpi-solicitadas" style="font-size:34px;font-weight:700;color:#92400e">0</div></div>
+    <div class="card"><h3>TEMPO MÉDIO NO PÁTIO</h3><div id="kpi-tma" style="font-size:34px;font-weight:700;color:var(--azul2)">Calculando...</div></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>VEÍCULOS NO PÁTIO</h3>
+    <table>
+      <thead><tr><th>Prisma</th><th>Placa</th><th>Modelo</th><th>Pátio</th><th>Entrada</th><th>Status</th></tr></thead>
+      <tbody id="tabela-patio"></tbody>
+    </table>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>FINALIZADOS (Últimos 20)</h3>
+    <table>
+      <thead><tr><th>Prisma</th><th>Placa</th><th>Pátio</th><th>Entrada</th><th>Saída</th><th>Tempo</th></tr></thead>
+      <tbody id="tabela-historico"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============ ÁREA COLABORADORES ============ -->
+<div id="view-colaboradores" class="hidden">
+  <div class="card" style="max-width:600px">
+    <h3>ADICIONAR COLABORADOR</h3>
+    <label>Nome</label><input type="text" id="col-nome" placeholder="Nome completo">
+    <label>Matrícula</label><input type="text" id="col-matricula" placeholder="Matrícula">
+    <label>Entrada</label><input type="time" id="col-entrada">
+    <label>Saída</label><input type="time" id="col-saida">
+    <label>Escala</label>
+    <select id="col-escala"><option>6x1</option><option>5x2</option><option>12x36</option><option>Diarista</option></select>
+    <button class="btn btn-azul" style="width:100%;margin-top:8px" onclick="adicionarColaborador()">SALVAR</button>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>Equipe Cadastrada</h3>
+    <table>
+      <thead><tr><th>Nome</th><th>Matrícula</th><th>Entrada</th><th>Saída</th><th>Escala</th><th>Ações</th></tr></thead>
+      <tbody id="tabela-colaboradores"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============ ÁREA ATALHOS ============ -->
+<div id="view-atalhos" class="hidden">
+  <div class="card" style="max-width:600px">
+    <h3>CRIAR BOTÃO DE ATALHO</h3>
+    <p style="font-size:13px;color:#64748b;margin-bottom:8px">Complementa o número do Prisma rapidamente (Ex: 45 PS, 45 PRIORIDADE).</p>
+    <label>Nome do botão</label><input type="text" id="ata-nome" placeholder="Ex: PS, PRIORIDADE">
+    <button class="btn btn-azul" style="width:100%;margin-top:8px" onclick="adicionarAtalho()">SALVAR BOTÃO</button>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>Botões Criados</h3>
+    <div id="lista-atalhos"></div>
+  </div>
+</div>
+
+<!-- ============ ÁREA LOGS ============ -->
+<div id="view-logs" class="hidden">
+  <div class="card">
+    <h3>🕓 LOG DE ACESSOS E AÇÕES</h3>
+    <p style="font-size:13px;color:#64748b;margin-bottom:12px">Histórico das últimas ações. Visível apenas para o administrador.</p>
+    <table>
+      <thead><tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th></tr></thead>
+      <tbody id="tabela-logs"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// ============ ESTADO GLOBAL ============
+let PATIOS = ['PÁTIO A', 'PÁTIO B', 'PÁTIO C'];
+let dados = { patio:[], historico:[], colaboradores:[], atalhos:[], tempo_medio:600000 };
+
+// ============ API ============
+async function api(path, body) {
+  const res = await fetch(path, {
+    method: body ? 'POST' : 'GET',
+    headers: { 'Content-Type':'application/json' },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (path === '/api/dados') return res.json();
+  return res;
+}
+
+function preencherPatios() {
+  const selEnt = document.getElementById('ent-patios');
+  const selSai = document.getElementById('saida-patios');
+  selEnt.innerHTML = ''; selSai.innerHTML = '';
+  const optEnt = document.createElement('option');
+  optEnt.value = ''; optEnt.textContent = 'Selecione o pátio...';
+  selEnt.appendChild(optEnt);
+  const optSai = document.createElement('option');
+  optSai.value = ''; optSai.textContent = 'Todos os pátios';
+  selSai.appendChild(optSai);
+  PATIOS.forEach(p => {
+    const a = document.createElement('option'); a.value = p; a.textContent = p;
+    const b = document.createElement('option'); b.value = p; b.textContent = p;
+    selEnt.appendChild(a); selSai.appendChild(b);
+  });
+}
+
+async function carregarDados() {
+  try {
+    dados = await api('/api/dados');
+    if (dados.atalhos) renderizarAtalhos();
+    renderizar();
+  } catch(e) { console.error(e); }
+}
+
+// ============ ENTRADA ============
+function registrarEntrada() {
+  const prisma = document.getElementById('ent-prisma').value.trim();
+  const placa = document.getElementById('ent-placa').value.trim();
+  const modelo = document.getElementById('ent-modelo').value.trim();
+  const patio = document.getElementById('ent-patios').value;
+  if (!prisma || !patio) { alert('Informe o prisma e o pátio.'); return; }
+  api('/api/entrada', {
+    id: Date.now(),
+    prisma,
+    placa,
+    modelo,
+    patio,
+    hora_entrada: new Date().toLocaleTimeString('pt-BR')
+  }).then(() => {
+    document.getElementById('ent-prisma').value = '';
+    document.getElementById('ent-placa').value = '';
+    document.getElementById('ent-modelo').value = '';
+    carregarDados();
+  });
+}
+
+// ============ SAÍDA ============
+async function solicitarSaida() {
+  const tipo = document.getElementById('saida-busca').value;
+  const valor = document.getElementById('saida-valor').value.trim();
+  const patio = document.getElementById('saida-patios').value;
+  if (!valor) { alert('Informe o prisma ou placa.'); return; }
+  const body = { hora_solicitacao: new Date().toLocaleTimeString('pt-BR') };
+  if (tipo === 'prisma') body.prisma = valor; else body.placa = valor;
+  if (patio) body.patio = patio;
+  const res = await api('/api/solicitar_saida', body);
+  const div = document.getElementById('saida-resultado');
+  if (res.status === 404) {
+    const j = await res.json();
+    div.innerHTML = '<div class="badge saida_solicitada">⚠️ ' + j.erro + '</div>';
+  } else {
+    div.innerHTML = '<div class="badge finalizado">✅ Saída solicitada! Veículo em busca no pátio.</div>';
+    document.getElementById('saida-valor').value = '';
+  }
+  carregarDados();
+}
+
+// ============ BAIXA (manobrista finaliza) ============
+function finalizarSaida(id) {
+  api('/api/baixa', {
+    id,
+    hora_saida: new Date().toLocaleTimeString('pt-BR'),
+    timestamp_saida: Date.now()
+  }).then(() => carregarDados());
+}
+
+// ============ COLABORADORES ============
+function adicionarColaborador() {
+  api('/api/colaborador/adicionar', {
+    id: Date.now(),
+    nome: document.getElementById('col-nome').value,
+    matricula: document.getElementById('col-matricula').value,
+    entrada: document.getElementById('col-entrada').value,
+    saida: document.getElementById('col-saida').value,
+    escala: document.getElementById('col-escala').value
+  }).then(() => carregarDados());
+}
+
+// ============ ATALHOS ============
+function adicionarAtalho() {
+  const nome = document.getElementById('ata-nome').value.trim();
+  if (!nome) return;
+  api('/api/atalho/adicionar', { id: Date.now(), nome }).then(() => {
+    document.getElementById('ata-nome').value = '';
+    carregarDados();
+  });
+}
+function usarAtalho(nome) {
+  document.getElementById('ent-prisma').value += ' ' + nome;
+}
+function renderizarAtalhos() {
+  const cont = document.getElementById('ent-atalhos');
+  cont.innerHTML = '';
+  (dados.atalhos || []).forEach(a => {
+    const b = document.createElement('button');
+    b.className = 'atalho-btn'; b.textContent = a.nome;
+    b.onclick = () => usarAtalho(a.nome);
+    cont.appendChild(b);
+  });
+}
+
+// ============ RENDERIZAR ============
+function renderizar() {
+  renderizarSolicitacoes();
+  renderizarPatio();
+  renderizarHistorico();
+  renderizarColaboradores();
+  renderizarListaAtalhos();
+  renderizarLogs();
+  calcularKpis();
+}
+
+function renderizarSolicitacoes() {
+  const tb = document.getElementById('tabela-solicitacoes');
+  const solicitadas = (dados.patio || []).filter(v => v.status === 'saida_solicitada');
+  tb.innerHTML = solicitadas.map(v => `
+    <tr>
+      <td>${v.prisma}</td><td>${v.placa}</td><td>${v.modelo}</td>
+      <td>${v.patio}</td><td>${v.hora_solicitacao || ''}</td><td>${v.manobrista || '—'}</td>
+      <td><span class="badge saida_solicitada">Buscando</span></td>
+      <td><button class="btn btn-verde" onclick="finalizarSaida(${v.id})">Finalizar</button></td>
+    </tr>`).join('') || '<tr><td colspan="8">Nenhuma solicitação em andamento.</td></tr>';
+}
+
+function renderizarPatio() {
+  const tb = document.getElementById('tabela-patio');
+  (dados.patio || []).forEach(v => {
+    const statusBadge = v.status === 'saida_solicitada'
+      ? '<span class="badge saida_solicitada">Buscando</span>'
+      : '<span class="badge no_patio">No pátio</span>';
+    const row = document.createElement('tr');
+    row.innerHTML = `<td>${v.prisma}</td><td>${v.placa}</td><td>${v.modelo}</td>
+      <td>${v.patio}</td><td>${v.hora_entrada || ''}</td><td>${statusBadge}</td>`;
+    tb.appendChild(row);
+  });
+  if (!(dados.patio || []).length) tb.innerHTML = '<tr><td colspan="6">Nenhum veículo no pátio.</td></tr>';
+}
+
+function renderizarHistorico() {
+  const tb = document.getElementById('tabela-historico');
+  (dados.historico || []).slice(0,20).forEach(v => {
+    const tempo = Math.round((v.tempo_patio_ms || 0) / 60000);
+    const row = document.createElement('tr');
+    row.innerHTML = `<td>${v.prisma}</td><td>${v.placa}</td><td>${v.patio}</td>
+      <td>${v.hora_entrada || ''}</td><td>${v.hora_saida || ''}</td><td>${tempo} min</td>`;
+    tb.appendChild(row);
+  });
+  if (!(dados.historico || []).length) tb.innerHTML = '<tr><td colspan="6">Nenhum veículo finalizado.</td></tr>';
+}
+
+function renderizarColaboradores() {
+  const tb = document.getElementById('tabela-colaboradores');
+  tb.innerHTML = (dados.colaboradores || []).map(c => `
+    <tr><td>${c.nome}</td><td>${c.matricula}</td><td>${c.entrada}</td>
+    <td>${c.saida}</td><td>${c.escala}</td>
+    <td><button class="btn btn-cinza" onclick="alert('Editar em breve')">✏️</button></td></tr>`).join('') || '<tr><td colspan="6">Nenhum colaborador cadastrado.</td></tr>';
+}
+
+function renderizarListaAtalhos() {
+  const div = document.getElementById('lista-atalhos');
+  div.innerHTML = (dados.atalhos || []).map(a =>
+    `<span class="badge no_patio" style="margin:4px">${a.nome}</span>`
+  ).join('') || '<p style="color:#64748b">Nenhum botão criado.</p>';
+}
+
+function renderizarLogs() {
+  const tb = document.getElementById('tabela-logs');
+  fetch('/api/logs').then(r => r.json()).then(logs => {
+    tb.innerHTML = logs.map(l => `<tr><td>${l.data_hora}</td><td>${l.usuario}</td><td>${l.acao}</td></tr>`).join('');
+  }).catch(() => { tb.innerHTML = '<tr><td colspan="3">Sem acesso.</td></tr>'; });
+}
+
+function calcularKpis() {
+  const noPatio = (dados.patio || []).filter(v => v.status === 'no_patio').length;
+  const solicitadas = (dados.patio || []).filter(v => v.status === 'saida_solicitada').length;
+  const tma = dados.tempo_medio || 0;
+  document.getElementById('kpi-no-patio').textContent = noPatio;
+  document.getElementById('kpi-solicitadas').textContent = solicitadas;
+  document.getElementById('kpi-tma').textContent = Math.round(tma/60000) + ' min';
+}
+
+// ============ NAVEGAÇÃO ============
+function mostrar(id) {
+  ['caixa','solicitacoes','painel','colaboradores','atalhos','logs'].forEach(v => {
+    document.getElementById('view-'+v).classList.toggle('hidden', v !== id);
+  });
+}
+function marcarAba(el) {
+  document.querySelectorAll('.abas button').forEach(b => b.classList.remove('ativo'));
+  el.classList.add('ativo');
+}
+function baixarRelatorio() {
+  window.location.href = '/api/relatorio';
+}
+function telaCheia() {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+}
+function sair() {
+  if (confirm('Sair do sistema?')) window.location.reload();
+}
+
+// ============ PÁTIOS ============
+function cadastrarPatio(nome) {
+  if (!PATIOS.includes(nome.toUpperCase())) PATIOS.push(nome.toUpperCase());
+  preencherPatios();
+}
+
+// ============ INICIO ============
+preencherPatios();
+carregarDados();
+setInterval(carregarDados, 10000);
+</script>
+</body>
+</html>
